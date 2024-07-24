@@ -2,6 +2,11 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 ## Getting Started
 
+The get the db ready run 
+```bash
+npm run init-db
+```
+
 First, run the development server:
 
 ```bash

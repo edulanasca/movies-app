@@ -33,7 +33,7 @@ export default function Header() {
                 </div>
                 <nav>
                     {
-                        data?.me.username ? (
+                        data?.me?.username ? (
                             <div className="flex items-center space-x-4">
                                 <p className="text-black">Hi, {data.me.username}</p>
                                 <button 
