@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Trending } from 'movieapp/models/Trending';
 import { Context } from 'movieapp/app/api/graphql/types';
-import { getDbConnection } from 'movieapp/lib/db';
+import { sql } from '@vercel/postgres';
 
 const API_KEY = process.env.TMDB_API_KEY;
 const SECRET_KEY = process.env.SECRET_KEY || 'your_secret_key_here';
@@ -224,38 +224,31 @@ const resolvers = {
       if (!context.user) {
         throw new Error('Not authenticated');
       }
-      const db = await getDbConnection();
-      const favorites = await db.all('SELECT * FROM favorites WHERE username = ?', context.user.username);
+      const { rows } = await sql`SELECT * FROM favorites WHERE username = ${context.user.username}`;
       const favs = [];
 
-      for (const fav of favorites) {
+      for (const fav of rows) {
         const response = await axios.get(`https://api.themoviedb.org/3/${fav.type}/${fav.id}?api_key=${API_KEY}`);
         favs.push({ ...response.data, __typename: fav.type === 'movie' ? 'Movie' : 'TVSeries', media_type: fav.type, isFav: true });
       }
-      await db.close();
       return favs;
     },
     me: async (_: unknown, __: unknown, context: Context) => {
       if (!context.user) {
         return null;
       }
-      const db = await getDbConnection();
-      const user = await db.get('SELECT username FROM users WHERE username = ?', context.user.username);
-      await db.close();
-      return user;
+      const { rows } = await sql`SELECT username FROM users WHERE username = ${context.user.username}`;
+      return rows[0];
     },
   },
   Mutation: {
     register: async (_: unknown, { username, password }: { username: string; password: string }, context: Context) => {
-      const db = await getDbConnection();
-      const existingUser = await db.get('SELECT * FROM users WHERE username = ?', username);
-      if (existingUser) {
-        await db.close();
+      const { rows } = await sql`SELECT * FROM users WHERE username = ${username}`;
+      if (rows.length > 0) {
         throw new Error('User already exists');
       }
       const hashedPassword = await bcrypt.hash(password, 10);
-      await db.run('INSERT INTO users (username, password) VALUES (?, ?)', username, hashedPassword);
-      await db.close();
+      await sql`INSERT INTO users (username, password) VALUES (${username}, ${hashedPassword})`;
 
       const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
       context.setCookie('auth_token', token, {
@@ -268,14 +261,11 @@ const resolvers = {
       return 'User registered successfully';
     },
     login: async (_: unknown, { username, password }: { username: string; password: string }, context: Context) => {
-      const db = await getDbConnection();
-      const user = await db.get('SELECT * FROM users WHERE username = ?', username);
-      await db.close();
-
-      if (!user) {
+      const { rows } = await sql`SELECT * FROM users WHERE username = ${username}`;
+      if (rows.length === 0) {
         throw new Error('User does not exist');
       }
-      const isValid = await bcrypt.compare(password, user.password);
+      const isValid = await bcrypt.compare(password, rows[0].password);
       if (!isValid) {
         throw new Error('Invalid password');
       }
@@ -298,19 +288,15 @@ const resolvers = {
       if (!context.user) {
         throw new Error('Not authenticated');
       }
-      const db = await getDbConnection();
-      await db.run('INSERT INTO favorites (username, id, type) VALUES (?, ?, ?)', context.user.username, id, type);
-      await db.close();
+      await sql`INSERT INTO favorites (username, id, type) VALUES (${context.user.username}, ${id}, ${type})`;
       return { id, type };
     },
     removeFavorite: async (_: unknown, { id }: { id: number }, context: Context) => {
       if (!context.user) {
         throw new Error('Not authenticated');
       }
-      const db = await getDbConnection();
-      const result = await db.run('DELETE FROM favorites WHERE username = ? AND id = ?', context.user.username, id);
-      await db.close();
-      return result.changes && result.changes > 0;
+      const result = await sql`DELETE FROM favorites WHERE username = ${context.user.username} AND id = ${id}`;
+      return result.rowCount && result.rowCount > 0;
     },
   },
 };

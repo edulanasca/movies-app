@@ -1,18 +1,16 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import { NextResponse } from 'next/server';
+import { sql } from '@vercel/postgres';
 
-async function initDb() {
+export async function GET() {
   try {
-    const db = await open({
-      filename: './users.sqlite',
-      driver: sqlite3.Database
-    });
-
-    await db.exec(`
+    const result_users = await sql`
       CREATE TABLE IF NOT EXISTS users (
         username TEXT PRIMARY KEY,
         password TEXT NOT NULL
       );
+    `;
+
+    const result_favorites = await sql`
       CREATE TABLE IF NOT EXISTS favorites (
         username TEXT,
         id INTEGER,
@@ -20,14 +18,11 @@ async function initDb() {
         PRIMARY KEY (username, id),
         FOREIGN KEY (username) REFERENCES users(username)
       );
-    `);
+    `;
 
-    await db.close();
-    /* eslint-disable no-console */
-    console.log('Database initialized');
+    return NextResponse.json({ result_users, result_favorites }, { status: 200 });
   } catch (error) {
     console.error('Error initializing database:', error);
+    return NextResponse.json({ error: 'Failed to initialize database' }, { status: 500 });
   }
 }
-
-initDb();

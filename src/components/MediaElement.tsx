@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FaStar } from "react-icons/fa";
-import { gql, useMutation } from "@apollo/client";
+import { ApolloError, gql, useMutation } from "@apollo/client";
 import { GET_FAVS, GET_TRENDING } from "movieapp/lib/queries";
 import { TrendingUnion } from "movieapp/models/Trending";
+import AuthModal from "./AuthModal";
 
 const ADD_FAV = gql`
     mutation AddFavorite($mediaId: Int!, $mediaType: String!) {
@@ -38,7 +39,8 @@ export default function MediaElement({ media }: { media: TrendingUnion }) {
                 refetchQueries: [{ query: GET_TRENDING }, { query: GET_FAVS }]
             });
         } catch (error: unknown) {
-            if ((error as Error).message.includes("Not authenticated")) {
+            // @ts-expect-error error returned by apollo client
+            if ((error as ApolloError).graphQLErrors[0].extensions?.originalError?.message?.includes("Not authenticated")) {
                 setShowAuthModal(true);
             } else {
                 console.error("Error adding favorite:", error);
@@ -48,12 +50,16 @@ export default function MediaElement({ media }: { media: TrendingUnion }) {
 
     function removeFromFavoritesHandler(e: React.MouseEvent, id: number) {
         e.stopPropagation();
-        removeFavorite({ variables: { mediaId: id }, refetchQueries: [{ query: GET_TRENDING }, { query: GET_FAVS }] });
-    }
-
-    function handleAuthAction(action: 'login' | 'register') {
-        setShowAuthModal(false);
-        router.push(`/auth/${action}`);
+        try {
+            removeFavorite({ variables: { mediaId: id }, refetchQueries: [{ query: GET_TRENDING }, { query: GET_FAVS }] });
+        } catch (error: unknown) {
+            // @ts-expect-error error returned by apollo client
+            if ((error as ApolloError).graphQLErrors[0].extensions?.originalError?.message?.includes("Not authenticated")) {
+                setShowAuthModal(true);
+            } else {
+                console.error("Error adding favorite:", error);
+            }
+        }
     }
 
     function handleKeyDown(event: React.KeyboardEvent) {
@@ -61,6 +67,10 @@ export default function MediaElement({ media }: { media: TrendingUnion }) {
             event.preventDefault();
             viewDetailsHandler(media.id, media.media_type);
         }
+    }
+
+    function cancelAuthModal() {
+        setShowAuthModal(false);
     }
 
     return (
@@ -108,34 +118,7 @@ export default function MediaElement({ media }: { media: TrendingUnion }) {
                 </div>
             </li>
 
-            {showAuthModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-xl">
-                        <h2 className="text-xl font-bold mb-4">Authentication Required</h2>
-                        <p className="mb-4">Please log in or register to add favorites.</p>
-                        <div className="flex justify-end space-x-4">
-                            <button
-                                onClick={() => handleAuthAction('login')}
-                                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
-                            >
-                                Login
-                            </button>
-                            <button
-                                onClick={() => handleAuthAction('register')}
-                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
-                            >
-                                Register
-                            </button>
-                            <button
-                                onClick={() => setShowAuthModal(false)}
-                                className="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {showAuthModal && <AuthModal onCancel={cancelAuthModal} />}
         </>
     );
 }

@@ -3,8 +3,9 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { schema } from 'movieapp/lib/schema';
 import { Context, CookieOptions } from './types';
-import { getDbConnection } from 'movieapp/lib/db';
 import { NextRequest } from 'next/server';
+import { sql } from '@vercel/postgres';
+import { User } from 'movieapp/models/User';
 
 const { SECRET_KEY } = process.env;
 
@@ -16,18 +17,19 @@ if (!SECRET_KEY) {
 const context = async (): Promise<Context> => {
     const cookieStore = cookies();
     const token = cookieStore.get('auth_token')?.value;
-    let user = null;
+    let user: User | null = null;
 
     if (token) {
         try {
             const decoded = jwt.verify(token, SECRET_KEY) as { username: string };
-            const db = await getDbConnection();
-            user = await db.get('SELECT * FROM users WHERE username = ?', decoded.username);
-            if (user) {
-                const favorites = await db.all('SELECT id FROM favorites WHERE username = ?', user.username);
-                user.favorites = favorites.map(f => f.id);
+            const { rows } = await sql<User>`SELECT username, password FROM users WHERE username = ${decoded.username}`;
+            if (rows.length > 0) {
+                user = rows[0];
+                if (user) {
+                    const { rows: favorites } = await sql<{ id: number }>`SELECT id FROM favorites WHERE username = ${user.username}`;
+                    user.favorites = favorites.map(f => ({id: f.id}));
+                }
             }
-            await db.close();
         } catch (err) {
             console.error('Invalid token', err?.toString());
         }
