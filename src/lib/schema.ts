@@ -195,129 +195,129 @@ const typeDefs = `
   `;
 
 const resolvers = {
-    Query: {
-        movie: async (_: any, { id }: { id: number }) => {
-            const response = await axios.get(`https://api.themoviedb.org/3/movie/${id}?api_key=${API_KEY}`);
-            return response.data;
-        },
-        tvseries: async (_: any, { id }: { id: number }) => {
-            const response = await axios.get(`https://api.themoviedb.org/3/tv/${id}?api_key=${API_KEY}`);
-            return response.data;
-        },
-        trending: async (_: any, __: any, context: Context) => {
-            const response = await axios.get<Trending>(`https://api.themoviedb.org/3/trending/all/day?api_key=${API_KEY}`);
-            return context.user !== undefined ?
-                response.data.results.map(it => ({ ...it, __typename: it.media_type === 'movie' ? 'Movie' : 'TVSeries', isFav: context.user ? context.user.favorites.some(fav => fav.id === it.id) : false })) :
-                response.data.results.map(it => ({ ...it, __typename: it.media_type === 'movie' ? 'Movie' : 'TVSeries' }));
-        },
-        search: async (_: any, { keyword }: { keyword: string }, context: Context) => {
-            const response = await axios.get<Trending>(`https://api.themoviedb.org/3/search/multi?api_key=${API_KEY}&query=${keyword}&include_adult=false&language=en-US&page=1`);
-            return context.user !== undefined ?
-                response.data.results.map(it => ({ ...it, __typename: it.media_type === 'movie' ? 'Movie' : 'TVSeries', isFav: context.user ? context.user.favorites.some(fav => fav.id === it.id) : false })) :
-                response.data.results.map(it => ({ ...it, __typename: it.media_type === 'movie' ? 'Movie' : 'TVSeries' }));
-        },
-        credits: async (_: any, { id, type }: { id: number; type: string }) => {
-            const response = await axios.get(`https://api.themoviedb.org/3/${type}/${id}/credits?api_key=${API_KEY}`);
-            return response.data.cast;
-        },
-        favorites: async (_: any, __: any, context: Context) => {
-            if (!context.user) {
-                throw new Error('Not authenticated');
-            }
-            const db = await getDbConnection();
-            const favorites = await db.all('SELECT * FROM favorites WHERE username = ?', context.user.username);
-            const favs = [];
-
-            for (const fav of favorites) {
-                const response = await axios.get(`https://api.themoviedb.org/3/${fav.type}/${fav.id}?api_key=${API_KEY}`);
-                favs.push({ ...response.data, __typename: fav.type === 'movie' ? 'Movie' : 'TVSeries', media_type: fav.type, isFav: true });
-            }
-            await db.close();
-            return favs;
-        },
-        me: async (_: any, __: any, context: Context) => {
-            if (!context.user) {
-                return null;
-            }
-            const db = await getDbConnection();
-            const user = await db.get('SELECT username FROM users WHERE username = ?', context.user.username);
-            await db.close();
-            return user;
-        },
+  Query: {
+    movie: async (_: unknown, { id }: { id: number }) => {
+      const response = await axios.get(`https://api.themoviedb.org/3/movie/${id}?api_key=${API_KEY}`);
+      return response.data;
     },
-    Mutation: {
-        register: async (_: any, { username, password }: { username: string; password: string }, context: Context) => {
-            const db = await getDbConnection();
-            const existingUser = await db.get('SELECT * FROM users WHERE username = ?', username);
-            if (existingUser) {
-                await db.close();
-                throw new Error('User already exists');
-            }
-            const hashedPassword = await bcrypt.hash(password, 10);
-            await db.run('INSERT INTO users (username, password) VALUES (?, ?)', username, hashedPassword);
-            await db.close();
-
-            const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
-            context.setCookie('auth_token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 3600000,
-            });
-
-            return 'User registered successfully';
-        },
-        login: async (_: any, { username, password }: { username: string; password: string }, context: Context) => {
-            const db = await getDbConnection();
-            const user = await db.get('SELECT * FROM users WHERE username = ?', username);
-            await db.close();
-
-            if (!user) {
-                throw new Error('User does not exist');
-            }
-            const isValid = await bcrypt.compare(password, user.password);
-            if (!isValid) {
-                throw new Error('Invalid password');
-            }
-            const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
-
-            context.setCookie('auth_token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 3600000,
-            });
-
-            return 'Login successful';
-        },
-        logout: async (_: any, __: any, context: Context) => {
-            context.clearCookie('auth_token');
-            return true;
-        },
-        addFavorite: async (_: any, { id, type }: { id: number; type: string }, context: Context) => {
-            if (!context.user) {
-                throw new Error('Not authenticated');
-            }
-            const db = await getDbConnection();
-            await db.run('INSERT INTO favorites (username, id, type) VALUES (?, ?, ?)', context.user.username, id, type);
-            await db.close();
-            return { id, type };
-        },
-        removeFavorite: async (_: any, { id }: { id: number }, context: Context) => {
-            if (!context.user) {
-                throw new Error('Not authenticated');
-            }
-            const db = await getDbConnection();
-            const result = await db.run('DELETE FROM favorites WHERE username = ? AND id = ?', context.user.username, id);
-            await db.close();
-            return result.changes && result.changes > 0;
-        },
+    tvseries: async (_: unknown, { id }: { id: number }) => {
+      const response = await axios.get(`https://api.themoviedb.org/3/tv/${id}?api_key=${API_KEY}`);
+      return response.data;
     },
+    trending: async (_: unknown, __: unknown, context: Context) => {
+      const response = await axios.get<Trending>(`https://api.themoviedb.org/3/trending/all/day?api_key=${API_KEY}`);
+      return context.user !== undefined ?
+        response.data.results.map(it => ({ ...it, __typename: it.media_type === 'movie' ? 'Movie' : 'TVSeries', isFav: context.user ? context.user.favorites.some(fav => fav.id === it.id) : false })) :
+        response.data.results.map(it => ({ ...it, __typename: it.media_type === 'movie' ? 'Movie' : 'TVSeries' }));
+    },
+    search: async (_: unknown, { keyword }: { keyword: string }, context: Context) => {
+      const response = await axios.get<Trending>(`https://api.themoviedb.org/3/search/multi?api_key=${API_KEY}&query=${keyword}&include_adult=false&language=en-US&page=1`);
+      return context.user !== undefined ?
+        response.data.results.map(it => ({ ...it, __typename: it.media_type === 'movie' ? 'Movie' : 'TVSeries', isFav: context.user ? context.user.favorites.some(fav => fav.id === it.id) : false })) :
+        response.data.results.map(it => ({ ...it, __typename: it.media_type === 'movie' ? 'Movie' : 'TVSeries' }));
+    },
+    credits: async (_: unknown, { id, type }: { id: number; type: string }) => {
+      const response = await axios.get(`https://api.themoviedb.org/3/${type}/${id}/credits?api_key=${API_KEY}`);
+      return response.data.cast;
+    },
+    favorites: async (_: unknown, __: unknown, context: Context) => {
+      if (!context.user) {
+        throw new Error('Not authenticated');
+      }
+      const db = await getDbConnection();
+      const favorites = await db.all('SELECT * FROM favorites WHERE username = ?', context.user.username);
+      const favs = [];
+
+      for (const fav of favorites) {
+        const response = await axios.get(`https://api.themoviedb.org/3/${fav.type}/${fav.id}?api_key=${API_KEY}`);
+        favs.push({ ...response.data, __typename: fav.type === 'movie' ? 'Movie' : 'TVSeries', media_type: fav.type, isFav: true });
+      }
+      await db.close();
+      return favs;
+    },
+    me: async (_: unknown, __: unknown, context: Context) => {
+      if (!context.user) {
+        return null;
+      }
+      const db = await getDbConnection();
+      const user = await db.get('SELECT username FROM users WHERE username = ?', context.user.username);
+      await db.close();
+      return user;
+    },
+  },
+  Mutation: {
+    register: async (_: unknown, { username, password }: { username: string; password: string }, context: Context) => {
+      const db = await getDbConnection();
+      const existingUser = await db.get('SELECT * FROM users WHERE username = ?', username);
+      if (existingUser) {
+        await db.close();
+        throw new Error('User already exists');
+      }
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await db.run('INSERT INTO users (username, password) VALUES (?, ?)', username, hashedPassword);
+      await db.close();
+
+      const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
+      context.setCookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 3600000,
+      });
+
+      return 'User registered successfully';
+    },
+    login: async (_: unknown, { username, password }: { username: string; password: string }, context: Context) => {
+      const db = await getDbConnection();
+      const user = await db.get('SELECT * FROM users WHERE username = ?', username);
+      await db.close();
+
+      if (!user) {
+        throw new Error('User does not exist');
+      }
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        throw new Error('Invalid password');
+      }
+      const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
+
+      context.setCookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 3600000,
+      });
+
+      return 'Login successful';
+    },
+    logout: async (_: unknown, __: unknown, context: Context) => {
+      context.clearCookie('auth_token');
+      return true;
+    },
+    addFavorite: async (_: unknown, { id, type }: { id: number; type: string }, context: Context) => {
+      if (!context.user) {
+        throw new Error('Not authenticated');
+      }
+      const db = await getDbConnection();
+      await db.run('INSERT INTO favorites (username, id, type) VALUES (?, ?, ?)', context.user.username, id, type);
+      await db.close();
+      return { id, type };
+    },
+    removeFavorite: async (_: unknown, { id }: { id: number }, context: Context) => {
+      if (!context.user) {
+        throw new Error('Not authenticated');
+      }
+      const db = await getDbConnection();
+      const result = await db.run('DELETE FROM favorites WHERE username = ? AND id = ?', context.user.username, id);
+      await db.close();
+      return result.changes && result.changes > 0;
+    },
+  },
 };
 
 const schema = createSchema({
-    typeDefs,
-    resolvers
+  typeDefs,
+  resolvers
 });
 
 export { schema, resolvers, SECRET_KEY };

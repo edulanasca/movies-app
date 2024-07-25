@@ -1,8 +1,9 @@
-import { gql, useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { GET_SEARCH, GET_TRENDING } from "movieapp/lib/queries";
 import MediaElement from "./MediaElement";
+import { TrendingUnion } from "movieapp/models/Trending";
 
-export default function TrendingList({term}: {term?: string}) {
+export default function TrendingList({ term }: { term?: string }) {
   const { loading, error, data } = useQuery(GET_TRENDING);
   const { loading: searchLoading, error: searchError, data: searchData } = useQuery(GET_SEARCH, {
     variables: { term },
@@ -17,7 +18,9 @@ export default function TrendingList({term}: {term?: string}) {
       {term ? <h1 className="text-2xl font-bold mb-4">Results found...</h1> : <h1 className="text-2xl font-bold mb-4">Trending Movies</h1>}
       <ul className="space-y-4">
         {
-        (term ? searchData.search : data.trending).filter((e: any) => e.media_type !== 'person').map((movie: any) => (<MediaElement key={movie.id} media={movie} />))
+          (term ? searchData.search : data.trending)
+            .filter((e: TrendingUnion) => e.media_type !== 'person')
+            .map((movie: TrendingUnion) => (<MediaElement key={movie.id} media={movie} />))
         }
       </ul>
     </div>

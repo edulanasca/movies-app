@@ -8,9 +8,13 @@ export default function Page() {
     const params = useParams<{ media_type: string; id: string }>()
     const { media_type, id } = params;
 
+    function goBackHandler() {
+        router.back();
+    }
+
     return (
         <div>
-            <div onClick={() => router.back()}>Go back</div>
+             <button onClick={goBackHandler}>Go back</button>
             {
                 media_type == "movie" ? <MovieDetails id={parseInt(id)} /> : <TvSeriesDetails id={parseInt(id)} />
             }

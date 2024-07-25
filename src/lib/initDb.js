@@ -1,5 +1,5 @@
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
 
 async function initDb() {
   try {
@@ -23,6 +23,7 @@ async function initDb() {
     `);
 
     await db.close();
+    /* eslint-disable no-console */
     console.log('Database initialized');
   } catch (error) {
     console.error('Error initializing database:', error);

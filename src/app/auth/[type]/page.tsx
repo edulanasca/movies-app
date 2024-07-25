@@ -31,17 +31,15 @@ export default function AuthForm() {
     e.preventDefault();
     try {
       if (isLogin) {
-        const { data } = await login({ 
+        await login({ 
             variables: { username, password } ,
             refetchQueries: [{ query: ME }, {query: GET_TRENDING}],
         },);
-        console.log(data.login);
       } else {
-        const { data } = await register({ 
+        await register({ 
           variables: { username, password }, 
           refetchQueries: [{ query: ME }],
         });
-        console.log(data.register);
       }
 
       router.push('/');

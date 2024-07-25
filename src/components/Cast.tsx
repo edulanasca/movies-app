@@ -1,6 +1,7 @@
 import { useQuery } from "@apollo/client";
 import Image from "next/image";
 import { GET_CAST } from "movieapp/lib/queries";
+import { CastModel } from "movieapp/models/Cast";
 
 export default function Cast({ id, type }: { id: number; type: string }) {
     const { data, loading, error } = useQuery(GET_CAST, {
@@ -13,7 +14,7 @@ export default function Cast({ id, type }: { id: number; type: string }) {
 
     return (
         <div className="flex space-x-4 overflow-x-auto">
-            {data && data.credits.map((member: any) => (
+            {data && data.credits.map((member: CastModel) => (
                 <div key={member.id} className="flex-shrink-0 w-32">
                     {
                         member.profile_path && (

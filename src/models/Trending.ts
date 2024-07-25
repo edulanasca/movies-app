@@ -1,3 +1,5 @@
+import { Movie, TVSeries } from "./Media";
+
 export interface Trending {
     page: number; // Defaults to 0
     results: Array<TrendingResult>;
@@ -21,4 +23,9 @@ export interface TrendingResult {
     video: boolean; // Defaults to true
     vote_average: number; // Defaults to 0
     vote_count: number; // Defaults to 0
+}
+
+export interface TrendingUnion extends Partial<Movie>, Partial<TVSeries> {
+    id: number;
+    media_type: string;
 }

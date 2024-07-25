@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FaStar } from "react-icons/fa";
-import { gql, useMutation, useQuery } from "@apollo/client";
-import { GET_FAVS, GET_SEARCH, GET_TRENDING } from "movieapp/lib/queries";
+import { gql, useMutation } from "@apollo/client";
+import { GET_FAVS, GET_TRENDING } from "movieapp/lib/queries";
+import { TrendingUnion } from "movieapp/models/Trending";
 
 const ADD_FAV = gql`
     mutation AddFavorite($mediaId: Int!, $mediaType: String!) {
@@ -19,7 +20,7 @@ const REMOVE_FAV = gql`
     }
 `;
 
-export default function MediaElement({ media }: { media: any }) {
+export default function MediaElement({ media }: { media: TrendingUnion }) {
     const router = useRouter();
     const [addFavorite] = useMutation(ADD_FAV);
     const [removeFavorite] = useMutation(REMOVE_FAV);
@@ -29,15 +30,15 @@ export default function MediaElement({ media }: { media: any }) {
         router.push(`/${media_type}/${id}`);
     }
 
-    async function addToFavoritesHandler(e: any, id: number, media_type: string) {
+    async function addToFavoritesHandler(e: React.MouseEvent, id: number, media_type: string) {
         e.stopPropagation();
         try {
-            await addFavorite({ 
-                variables: { mediaId: id, mediaType: media_type }, 
-                refetchQueries: [{query:GET_TRENDING}, {query:GET_FAVS}] 
+            await addFavorite({
+                variables: { mediaId: id, mediaType: media_type },
+                refetchQueries: [{ query: GET_TRENDING }, { query: GET_FAVS }]
             });
-        } catch (error: any) {
-            if (error.message.includes("Not authenticated")) {
+        } catch (error: unknown) {
+            if ((error as Error).message.includes("Not authenticated")) {
                 setShowAuthModal(true);
             } else {
                 console.error("Error adding favorite:", error);
@@ -45,9 +46,9 @@ export default function MediaElement({ media }: { media: any }) {
         }
     }
 
-    function removeFromFavoritesHandler(e: any, id: number) {
+    function removeFromFavoritesHandler(e: React.MouseEvent, id: number) {
         e.stopPropagation();
-        removeFavorite({ variables: { mediaId: id }, refetchQueries: [{query:GET_TRENDING}, {query:GET_FAVS}] });
+        removeFavorite({ variables: { mediaId: id }, refetchQueries: [{ query: GET_TRENDING }, { query: GET_FAVS }] });
     }
 
     function handleAuthAction(action: 'login' | 'register') {
@@ -55,45 +56,55 @@ export default function MediaElement({ media }: { media: any }) {
         router.push(`/auth/${action}`);
     }
 
+    function handleKeyDown(event: React.KeyboardEvent) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            viewDetailsHandler(media.id, media.media_type);
+        }
+    }
+
     return (
         <>
-            <li
-                key={media.id}
-                onClick={() => viewDetailsHandler(media.id, media.media_type)}
-                className="flex p-4 border rounded-lg cursor-pointer hover:shadow-lg relative"
-            >
-                {media.poster_path && (
-                    <div className="flex-shrink-0">
-                        <Image
-                            src={`https://image.tmdb.org/t/p/w500${media.poster_path}`}
-                            alt={media.title ?? media.original_title ?? media.name ?? media.original_name}
-                            width={200}
-                            height={300}
-                            className="rounded-lg"
-                        />
-                    </div>
-                )}
-                <div className="ml-4 flex-grow flex flex-col">
-                    <div className="flex justify-between items-start">
-                        <h2 className="text-xl font-bold pr-8 break-words">
-                            {media.title ?? media.original_title ?? media.name ?? media.original_name}
-                        </h2>
-                        <div
-                            className="flex-shrink-0"
-                            onClick={(e) => media.isFav ? removeFromFavoritesHandler(e, media.id) : addToFavoritesHandler(e, media.id, media.media_type)}
-                            style={{ pointerEvents: 'auto' }}
-                        >
-                            {media.isFav ? (
-                                <FaStar className="text-yellow-500 cursor-pointer h-[1.5em] w-[1.5em]" />
-                            ) : (
-                                <FaStar className="text-gray-500 cursor-pointer h-[1.5em] w-[1.5em]" />
-                            )}
+            <li className="list-none">
+                <div
+                    role="button"
+                    tabIndex={0}
+                    className="flex p-4 border rounded-lg cursor-pointer hover:shadow-lg relative focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onClick={() => viewDetailsHandler(media.id, media.media_type)}
+                    onKeyDown={handleKeyDown}
+                >
+                    {media.poster_path && (
+                        <div className="flex-shrink-0">
+                            <Image
+                                src={`https://image.tmdb.org/t/p/w500${media.poster_path}`}
+                                alt={media.title ?? media.original_title ?? media.name ?? media.original_name ?? "title"}
+                                width={200}
+                                height={300}
+                                className="rounded-lg"
+                            />
                         </div>
+                    )}
+                    <div className="ml-4 flex-grow flex flex-col">
+                        <div className="flex justify-between items-start">
+                            <h2 className="text-xl font-bold pr-8 break-words">
+                                {media.title ?? media.original_title ?? media.name ?? media.original_name}
+                            </h2>
+                            <button
+                                className="flex-shrink-0 bg-transparent border-none p-0"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    media.isFav ? removeFromFavoritesHandler(e, media.id) : addToFavoritesHandler(e, media.id, media.media_type);
+                                }}
+                                aria-label={media.isFav ? "Remove from favorites" : "Add to favorites"}
+                            >
+                                <FaStar className={`cursor-pointer h-[1.5em] w-[1.5em] ${media.isFav ? 'text-yellow-500' : 'text-gray-500'}`} />
+                            </button>
+                        </div>
+                        <p className="text-sm font-medium">Rating: {media.vote_average}</p>
+                        <p className="text-sm text-gray-500 mb-2">
+                            {media.release_date ? `Release Date: ${media.release_date}` : `First Air Date: ${media.first_air_date}`}
+                        </p>
                     </div>
-                    <p className="text-sm font-medium">Rating: {media.vote_average}</p>
-                    <p className="text-sm text-gray-500 mb-2">
-                        {media.release_date ? `Release Date: ${media.release_date}` : `First Air Date: ${media.first_air_date}`}
-                    </p>
                 </div>
             </li>
 
