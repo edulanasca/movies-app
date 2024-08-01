@@ -32,7 +32,7 @@ export default function Home() {
       <div className="z-10 w-full max-w-5xl font-mono text-sm lg:flex justify-center">
         <div className="flex justify-center flex-col">
           <input
-            className="text-black w-[340px] h-[30px] text-center placeholder-center"
+            className="text-black dark:text-black w-[340px] h-[30px] text-center placeholder-center"
             type="text"
             placeholder="Search for a movie"
             value={term}

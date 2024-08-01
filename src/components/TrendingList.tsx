@@ -1,7 +1,7 @@
 import { useQuery } from "@apollo/client";
 import { GET_SEARCH, GET_TRENDING } from "movieapp/lib/queries";
 import MediaElement from "./MediaElement";
-import { TrendingUnion } from "movieapp/models/Trending";
+import { TrendingUnion } from "movieapp/types/Trending";
 
 export default function TrendingList({ term }: { term?: string }) {
   const { loading, error, data } = useQuery(GET_TRENDING);

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { FaStar } from "react-icons/fa";
 import { ApolloError, gql, useMutation } from "@apollo/client";
 import { GET_FAVS, GET_TRENDING } from "movieapp/lib/queries";
-import { TrendingUnion } from "movieapp/models/Trending";
+import { TrendingUnion } from "movieapp/types/Trending";
 import AuthModal from "./AuthModal";
 
 const ADD_FAV = gql`

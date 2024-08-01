@@ -2,9 +2,10 @@ import { createSchema } from 'graphql-yoga';
 import axios from 'axios';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Trending } from 'movieapp/models/Trending';
+import { Trending } from 'movieapp/types/Trending';
 import { Context } from 'movieapp/app/api/graphql/types';
-import { sql } from '@vercel/postgres';
+import { db } from './postgresClient';
+import { GraphQLError } from 'graphql';
 
 const API_KEY = process.env.TMDB_API_KEY;
 const SECRET_KEY = process.env.SECRET_KEY || 'your_secret_key_here';
@@ -192,7 +193,21 @@ const typeDefs = `
       credit_id: String
       order: Int
     }
+
+    type Error {
+      message: String!
+      code: String!
+    }
   `;
+
+function createError(message: string, code: string, statusCode: number): GraphQLError {
+  return new GraphQLError(message, {
+    extensions: {
+      code,
+      http: { status: statusCode },
+    },
+  });
+}
 
 const resolvers = {
   Query: {
@@ -224,10 +239,10 @@ const resolvers = {
       if (!context.user) {
         throw new Error('Not authenticated');
       }
-      const { rows } = await sql`SELECT * FROM favorites WHERE username = ${context.user.username}`;
+      const selectedFavs = await db.selectFrom('favorites').selectAll().where('username', '=', context.user.username).execute();
       const favs = [];
 
-      for (const fav of rows) {
+      for (const fav of selectedFavs) {
         const response = await axios.get(`https://api.themoviedb.org/3/${fav.type}/${fav.id}?api_key=${API_KEY}`);
         favs.push({ ...response.data, __typename: fav.type === 'movie' ? 'Movie' : 'TVSeries', media_type: fav.type, isFav: true });
       }
@@ -237,48 +252,58 @@ const resolvers = {
       if (!context.user) {
         return null;
       }
-      const { rows } = await sql`SELECT username FROM users WHERE username = ${context.user.username}`;
-      return rows[0];
+      const user = await db.selectFrom('users').selectAll().where('username', '=', context.user.username).executeTakeFirst();
+      return user;
     },
   },
   Mutation: {
     register: async (_: unknown, { username, password }: { username: string; password: string }, context: Context) => {
-      const { rows } = await sql`SELECT * FROM users WHERE username = ${username}`;
-      if (rows.length > 0) {
-        throw new Error('User already exists');
+      try {
+        const user = await db.selectFrom('users').selectAll().where('username', '=', username).executeTakeFirst();
+        if (user) {
+          throw createError('User already exists', 'USER_EXISTS', 409);
+        }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await db.insertInto('users').values({ username, password: hashedPassword, favorites: [] }).execute();
+
+        const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
+        context.setCookie('auth_token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 3600000,
+        });
+
+        return { token, user: { username } };
+      } catch (error) {
+        if (error instanceof GraphQLError) throw error;
+        throw createError('Registration failed', 'REGISTRATION_FAILED', 500);
       }
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await sql`INSERT INTO users (username, password) VALUES (${username}, ${hashedPassword})`;
-
-      const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
-      context.setCookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 3600000,
-      });
-
-      return 'User registered successfully';
     },
     login: async (_: unknown, { username, password }: { username: string; password: string }, context: Context) => {
-      const { rows } = await sql`SELECT * FROM users WHERE username = ${username}`;
-      if (rows.length === 0) {
-        throw new Error('User does not exist');
-      }
-      const isValid = await bcrypt.compare(password, rows[0].password);
-      if (!isValid) {
-        throw new Error('Invalid password');
-      }
-      const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
+      try {
+        const user = await db.selectFrom('users').selectAll().where('username', '=', username).executeTakeFirst();
+        if (!user) {
+          throw createError('User does not exist', 'USER_NOT_FOUND', 404);
+        }
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) {
+          throw createError('Invalid password', 'INVALID_PASSWORD', 401);
+        }
+        const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
 
-      context.setCookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 3600000,
-      });
+        context.setCookie('auth_token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 3600000,
+        });
 
-      return 'Login successful';
+        return { token, user: { username } };
+      } catch (error) {
+        if (error instanceof GraphQLError) throw error;
+        throw createError('Login failed', 'LOGIN_FAILED', 500);
+      }
     },
     logout: async (_: unknown, __: unknown, context: Context) => {
       context.clearCookie('auth_token');
@@ -286,17 +311,17 @@ const resolvers = {
     },
     addFavorite: async (_: unknown, { id, type }: { id: number; type: string }, context: Context) => {
       if (!context.user) {
-        throw new Error('Not authenticated');
+        throw createError('Not authenticated', 'NOT_AUTHENTICATED', 401);
       }
-      await sql`INSERT INTO favorites (username, id, type) VALUES (${context.user.username}, ${id}, ${type})`;
+      await db.insertInto('favorites').values({ username: context.user.username, id, type }).execute();
       return { id, type };
     },
     removeFavorite: async (_: unknown, { id }: { id: number }, context: Context) => {
       if (!context.user) {
-        throw new Error('Not authenticated');
+        throw createError('Not authenticated', 'NOT_AUTHENTICATED', 401);
       }
-      const result = await sql`DELETE FROM favorites WHERE username = ${context.user.username} AND id = ${id}`;
-      return result.rowCount && result.rowCount > 0;
+      await db.deleteFrom('favorites').where('username', '=', context.user.username).where('id', '=', id).execute();
+      return true;
     },
   },
 };

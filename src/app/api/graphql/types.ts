@@ -1,4 +1,4 @@
-import { User } from "movieapp/models/User";
+import { User } from "movieapp/lib/postgresClient";
 
 export type Context = {
     user: User | null;

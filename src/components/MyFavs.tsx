@@ -3,7 +3,7 @@
 import { useQuery } from "@apollo/client";
 import { GET_FAVS } from "movieapp/lib/queries";
 import MediaElement from "./MediaElement";
-import { TrendingUnion } from "movieapp/models/Trending";
+import { TrendingUnion } from "movieapp/types/Trending";
 
 export default function MyFavs() {
     const { loading, error, data } = useQuery(GET_FAVS);

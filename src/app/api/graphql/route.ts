@@ -4,8 +4,7 @@ import { cookies } from 'next/headers';
 import { schema } from 'movieapp/lib/schema';
 import { Context, CookieOptions } from './types';
 import { NextRequest } from 'next/server';
-import { sql } from '@vercel/postgres';
-import { User } from 'movieapp/models/User';
+import { db, User } from 'movieapp/lib/postgresClient';
 
 const { SECRET_KEY } = process.env;
 
@@ -22,13 +21,11 @@ const context = async (): Promise<Context> => {
     if (token) {
         try {
             const decoded = jwt.verify(token, SECRET_KEY) as { username: string };
-            const { rows } = await sql<User>`SELECT username, password FROM users WHERE username = ${decoded.username}`;
-            if (rows.length > 0) {
-                user = rows[0];
-                if (user) {
-                    const { rows: favorites } = await sql<{ id: number }>`SELECT id FROM favorites WHERE username = ${user.username}`;
-                    user.favorites = favorites.map(f => ({id: f.id}));
-                }
+            const userRecord = await db.selectFrom('users').selectAll().where('username', '=', decoded.username).executeTakeFirst();
+            if (userRecord) {
+                user = { ...userRecord, favorites: [] };
+                const favorites = await db.selectFrom('favorites').selectAll().where('username', '=', user.username).execute();
+                user.favorites = favorites;
             }
         } catch (err) {
             console.error('Invalid token', err?.toString());
