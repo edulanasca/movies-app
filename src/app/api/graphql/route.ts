@@ -17,31 +17,31 @@ const context = async (): Promise<Context> => {
     const cookieStore = cookies();
     const token = cookieStore.get('auth_token')?.value;
     let user: User | null = null;
-
+  
     if (token) {
-        try {
-            const decoded = jwt.verify(token, SECRET_KEY) as { username: string };
-            const userRecord = await db.selectFrom('users').selectAll().where('username', '=', decoded.username).executeTakeFirst();
-            if (userRecord) {
-                user = { ...userRecord, favorites: [] };
-                const favorites = await db.selectFrom('favorites').selectAll().where('username', '=', user.username).execute();
-                user.favorites = favorites;
-            }
-        } catch (err) {
-            console.error('Invalid token', err?.toString());
+      try {
+        const decoded = jwt.verify(token, SECRET_KEY) as { username: string };
+        const userRecord = await db.selectFrom('users').selectAll().where('username', '=', decoded.username).executeTakeFirst();
+        if (userRecord) {
+          user = { ...userRecord, favorites: [] };
+          const favorites = await db.selectFrom('favorites').selectAll().where('username', '=', user.username).execute();
+          user.favorites = favorites;
         }
+      } catch (err) {
+        console.error('Invalid token', err?.toString());
+      }
     }
-
+  
     return {
-        user,
-        setCookie: (name: string, value: string, options: CookieOptions) => {
-            cookieStore.set(name, value, options);
-        },
-        clearCookie: (name: string) => {
-            cookieStore.delete(name);
-        }
+      user,
+      setCookie: (name: string, value: string, options: CookieOptions) => {
+        cookieStore.set(name, value, options);
+      },
+      clearCookie: (name: string) => {
+        cookieStore.delete(name);
+      }
     };
-};
+  };
 
 const yoga = createYoga({
     schema,

@@ -1,7 +1,5 @@
 import { createSchema } from 'graphql-yoga';
 import axios from 'axios';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { Trending } from 'movieapp/types/Trending';
 import { Context } from 'movieapp/app/api/graphql/types';
 import { db } from './postgresClient';
@@ -22,9 +20,6 @@ const typeDefs = `
     }
   
     type Mutation {
-      register(username: String!, password: String!): String
-      login(username: String!, password: String!): String
-      logout: Boolean
       addFavorite(id: Int!, type: String!): Favorite
       removeFavorite(id: Int!): Boolean
     }
@@ -257,58 +252,6 @@ const resolvers = {
     },
   },
   Mutation: {
-    register: async (_: unknown, { username, password }: { username: string; password: string }, context: Context) => {
-      try {
-        const user = await db.selectFrom('users').selectAll().where('username', '=', username).executeTakeFirst();
-        if (user) {
-          throw createError('User already exists', 'USER_EXISTS', 409);
-        }
-        const hashedPassword = await bcrypt.hash(password, 10);
-        await db.insertInto('users').values({ username, password: hashedPassword, favorites: [] }).execute();
-
-        const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
-        context.setCookie('auth_token', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 3600000,
-        });
-
-        return { token, user: { username } };
-      } catch (error) {
-        if (error instanceof GraphQLError) throw error;
-        throw createError('Registration failed', 'REGISTRATION_FAILED', 500);
-      }
-    },
-    login: async (_: unknown, { username, password }: { username: string; password: string }, context: Context) => {
-      try {
-        const user = await db.selectFrom('users').selectAll().where('username', '=', username).executeTakeFirst();
-        if (!user) {
-          throw createError('User does not exist', 'USER_NOT_FOUND', 404);
-        }
-        const isValid = await bcrypt.compare(password, user.password);
-        if (!isValid) {
-          throw createError('Invalid password', 'INVALID_PASSWORD', 401);
-        }
-        const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
-
-        context.setCookie('auth_token', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 3600000,
-        });
-
-        return { token, user: { username } };
-      } catch (error) {
-        if (error instanceof GraphQLError) throw error;
-        throw createError('Login failed', 'LOGIN_FAILED', 500);
-      }
-    },
-    logout: async (_: unknown, __: unknown, context: Context) => {
-      context.clearCookie('auth_token');
-      return true;
-    },
     addFavorite: async (_: unknown, { id, type }: { id: number; type: string }, context: Context) => {
       if (!context.user) {
         throw createError('Not authenticated', 'NOT_AUTHENTICATED', 401);
