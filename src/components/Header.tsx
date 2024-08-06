@@ -3,7 +3,7 @@
 import { useQuery } from "@apollo/client";
 import { GET_TRENDING, ME } from "movieapp/lib/queries";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Header({ username }: { username?: string }) {
     const router = useRouter();
@@ -31,7 +31,11 @@ export default function Header({ username }: { username?: string }) {
         } finally {
             setIsLoggingOut(false);
         }
-    }   
+    }
+
+    useEffect(() => {
+        refetchMe();
+    }, [refetchMe]);
 
     return (
         <header className="text-white p-4 w-full">
@@ -43,7 +47,7 @@ export default function Header({ username }: { username?: string }) {
                     {
                         username ? (
                             <div className="flex items-center space-x-4">
-                                <p className="text-black">Hi, {username}</p>
+                                <p className="text-black dark:text-white">Hi, {username}</p>
                                 <button
                                     onClick={logoutHandler}
                                     disabled={isLoggingOut}

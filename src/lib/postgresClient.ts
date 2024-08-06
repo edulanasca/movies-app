@@ -9,7 +9,7 @@ interface Database {
 interface UserTable {
     username: string;
     password: string;
-    favorites: FavoriteTable[];
+    favorites?: FavoriteTable[];
 }
 
 interface FavoriteTable {
