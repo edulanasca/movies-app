@@ -66,10 +66,10 @@ export default function AuthForm() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-8">
-      <h2 className="text-2xl font-bold mb-4">{isLogin ? 'Login' : 'Sign Up'}</h2>
+    <div className="max-w-sm mx-auto mt-8 px-4">
+      <h2 className="text-2xl font-bold mb-6 text-center">{isLogin ? 'Login' : 'Sign Up'}</h2>
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
           <span className="block sm:inline">{error}</span>
         </div>
       )}
@@ -79,19 +79,19 @@ export default function AuthForm() {
         onSubmit={handleSubmit}
       >
         {({ isSubmitting }) => (
-          <Form className="space-y-4">
+          <Form className="space-y-6">
             <div>
-              <label htmlFor="username" className="block mb-1">Username</label>
+              <label htmlFor="username" className="block mb-2 font-medium">Username</label>
               <Field
                 type="text"
                 id="username"
                 name="username"
-                className="w-full px-3 py-2 border rounded text-black dark:text-black"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black dark:text-black"
               />
               <ErrorMessage name="username" component="div" className="text-red-500 text-sm mt-1" />
             </div>
             <div>
-              <label htmlFor="password" className="block mb-1">Password</label>
+              <label htmlFor="password" className="block mb-2 font-medium">Password</label>
               <Field
                 type="password"
                 id="password"
