@@ -2,10 +2,7 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 ## Getting Started
 
-The get the db ready run 
-```bash
-npm run init-db
-```
+The get the db ready run `http://localhost:3000/api/create`
 
 First, run the development server:
 

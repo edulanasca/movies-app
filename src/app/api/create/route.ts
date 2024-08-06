@@ -1,26 +1,20 @@
 import { NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { db } from 'movieapp/lib/postgresClient';
 
 export async function GET() {
   try {
-    const result_users = await sql`
-      CREATE TABLE IF NOT EXISTS users (
-        username TEXT PRIMARY KEY,
-        password TEXT NOT NULL
-      );
-    `;
+    await db.schema.createTable('users')
+      .addColumn('username', 'text', (col) => col.primaryKey())
+      .addColumn('password', 'text', (col) => col.notNull())
+      .execute();
 
-    const result_favorites = await sql`
-      CREATE TABLE IF NOT EXISTS favorites (
-        username TEXT,
-        id INTEGER,
-        type TEXT,
-        PRIMARY KEY (username, id),
-        FOREIGN KEY (username) REFERENCES users(username)
-      );
-    `;
+    await db.schema.createTable('favorites')
+      .addColumn('username', 'text', (col) => col.primaryKey().references('users(username)'))
+      .addColumn('id', 'integer', (col) => col.primaryKey().notNull())
+      .addColumn('type', 'text', (col) => col.notNull())
+      .execute();
 
-    return NextResponse.json({ result_users, result_favorites }, { status: 200 });
+    return NextResponse.json({ message: 'Database initialized' }, { status: 200 });
   } catch (error) {
     console.error('Error initializing database:', error);
     return NextResponse.json({ error: 'Failed to initialize database' }, { status: 500 });
