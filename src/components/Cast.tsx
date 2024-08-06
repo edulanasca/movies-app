@@ -25,7 +25,7 @@ export default function Cast({ id, type }: { id: number; type: string }) {
                             className="rounded-lg"
                         />
                     }
-                    <p className="text-center mt-2">{member.name}</p>
+                    <p className="text-center mt-2 font-bold">{member.name}</p>
                     <p className="text-center mt-2">{member.character}</p>
                 </div>
             ))}

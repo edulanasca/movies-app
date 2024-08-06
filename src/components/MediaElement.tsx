@@ -38,12 +38,15 @@ export default function MediaElement({ media }: { media: TrendingUnion }) {
                 variables: { mediaId: id, mediaType: media_type },
                 refetchQueries: [{ query: GET_TRENDING }, { query: GET_FAVS }]
             });
-        } catch (error: unknown) {
-            // @ts-expect-error error returned by apollo client
-            if ((error as ApolloError).graphQLErrors[0].extensions?.originalError?.message?.includes("Not authenticated")) {
-                setShowAuthModal(true);
+        } catch (error) {
+            if (error instanceof ApolloError) {
+                if (error.message.includes("401")) {
+                    setShowAuthModal(true);
+                } else {
+                    console.error("Error adding favorite:", error.message);
+                }
             } else {
-                console.error("Error adding favorite:", error);
+                console.error("Unexpected error:", error);
             }
         }
     }
@@ -75,28 +78,28 @@ export default function MediaElement({ media }: { media: TrendingUnion }) {
 
     return (
         <>
-            <li className="list-none">
+            <li className="list-none w-full">
                 <div
                     role="button"
                     tabIndex={0}
-                    className="flex p-4 border rounded-lg cursor-pointer hover:shadow-lg relative focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex flex-col sm:flex-row p-4 border rounded-lg cursor-pointer hover:shadow-lg relative focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-400"
                     onClick={() => viewDetailsHandler(media.id, media.media_type)}
                     onKeyDown={handleKeyDown}
                 >
                     {media.poster_path && (
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 mb-4 sm:mb-0 sm:mr-6 sm:w-48">
                             <Image
                                 src={`https://image.tmdb.org/t/p/w500${media.poster_path}`}
                                 alt={media.title ?? media.original_title ?? media.name ?? media.original_name ?? "title"}
-                                width={200}
-                                height={300}
-                                className="rounded-lg"
+                                width={192}
+                                height={288}
+                                className="rounded-lg w-full h-auto"
                             />
                         </div>
                     )}
-                    <div className="ml-4 flex-grow flex flex-col">
+                    <div className="flex-grow flex flex-col">
                         <div className="flex justify-between items-start">
-                            <h2 className="text-xl font-bold pr-8 break-words">
+                            <h2 className="text-lg font-bold pr-8 break-words mb-2">
                                 {media.title ?? media.original_title ?? media.name ?? media.original_name}
                             </h2>
                             <button

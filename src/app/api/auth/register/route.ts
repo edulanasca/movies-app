@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    await db.insertInto('users').values({ username, password: hashedPassword, favorites: [] }).execute();
+    await db.insertInto('users').values({ username, password: hashedPassword }).execute();
 
     const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
 
